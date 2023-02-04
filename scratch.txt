@@ -1,0 +1,101 @@
+
+Build a example python application sample prototype named Expresso to be used for a concept demonstration with the following attributes:
+Purpose of Expresso: 
+- The main goal of Expresso is to extract blocks of lines from text documents.
+Features and Attributes: 
+- Expresso should be a python application that can be used from the command line of popular linux shells.
+- Expresso requires that a file must be provided as an input. 
+- Expresso accepts an optional input parameter named tfoutFileName which is a string that includes a filename which may also include the file path. 
+  - if the tfoutFileName is provided as an input value, in addition to exporting any parseBlocks, the input file will also be transformed by removing all opening delimeter lines, closing delimeter lines, and extraction marked lines and then saved using the tfoutFileName as the filename or path/filename where the output is saved.
+- Expresso should extract blocks of lines from an input file, using opening and closing delimeter tags to identify the starting and ending line of a block of lines that should be extracted. 
+- The lines that expresso should extract from an input file start with the line that the opening delimeter tag is on, and should include each following line up to and including the line that the closing delimeter tag is on.
+- Expresso will use a delimeter tag that has the same format as an html meta tag with custom attributes. This delimiter tag is only used by expresso, and does not need to conform to html or other standards.
+- All Expresso delimeter tags should be either an opening tag or a closing tag. 
+- All Expresso delimeter opening tags should at minimum include the attributes "parseBlock=firstLine" and "parseWith=expresso".
+- All Expresso delimeter closing tags should include the attribute "parseBlock=lastLine" and "parseWith=expresso".
+- If there are any html meta tags in a source document they must include the attribute parseWith=expresso to be recognized as a expresso delimeter. 
+- The lines of an input document provided to expresso can be classified into the following types:
+  - Standard line: A standard line does not include a delimiter, and it is not in between a an opening and closing delimiter tag.
+  - Opening Delimeter Line: An Opening Delimeter line is a line that begins with a valid expresso opening delimeter tag.
+  - Closing Delimeter Line: A Closing Delimeter line is a line that begins with a valid expresso closing delimeter tag.
+  - Extraction Marked Line: An extraction marked line is a line that is in between an Opening Delimeter Line and a Closing Delimeter line. 
+- A source input file provided to expresso may have blocks of lines that expresso should extract. These may be referred to as parseBlocks or parsedblocks.
+- A parsedBlock will always begin with an Opening Delimeter line, it may include one or more extraction marked lines, and will end with a Closing Delimeter line. 
+- There may be multiple distinct parseBlocks in an input document.
+- Every parseBlock must include a blockName attribute in it's opening delimeter tag.
+  - if a blockName is not specified, a default blockName should be generated which should follow the form namedBlock-12345, where the numbers 12345 should be replaced by a random number.
+  - when a blockName is generated, Expresso should verify that for a single input document, each generated blockName is unique. If a blockName is generated that is not unique, a new blockName should be generated until a unique blockName is found.
+- Expresso opening delimeter tags must include an outputFileName OR an appendTo attribute.
+- Expresso opening delimiter tags cannot include both an outputFileName And an appendTo attribute. 
+  - If any opening delimiter tag includes both outputFileName and appendTo attributes, exit and return an error message.
+- outputFileName criteria:
+  - outputFileName specifies the path and filename that the contents of the parseBlock will be saved as.
+  - outputFileName strings may include the path and filename for a parseBlock output file. 
+    - If the outputFileName does not include a directory path, the output file should be saved in the same directory that the expresso command was executed.
+    - If the outputFileName includes a relative path, it should be considered as relative to the directory that the expresso command was executed at. 
+    - If the outputFileName includes a full path, the output file should be saved at the specified location.
+    - If the outputFileName includes a path but does not include a filename, exit and return an error messgae.
+    - If the outputFileName attribute is not provided and the appendTo attribute is provided, follow the procedure in the appendTo feature description to determine the output filename.
+    - If the outputFileName attribute is not provided and the appendTo attribute is not provided, exit and return an error message.
+- An Opening Delimeter tag may contain an outputTemplate parameters
+  - Expresso supports the ability for parseBlocks to define an output template, which expresso uses to format extracted parseBlock lines according to specified criteria before saving an output file.
+  - Expresso always uses an outputTemplate to provide formatting rules that are applied to extracted parseBlock lines before saving an output file.
+  - if no outputTemplate is defined, the default outputTemplate rules are applied. 
+  - a templating function should run to apply the rules defined in an output template. 
+    - the templating function should take all the lines in a parseBlock as input, and return a filteredBlock, which is the content of a parseBlock after the outputTemplateRules have been applied.
+  - the default outputTemplate has the following attributes:
+    - the templating function should accept a parseBlock as input
+    - the return value should only include any Extraction Marked Lines in the parseBlock and should not include the opening delimeter line or the closing delimeter line.
+  - an additional template named "md1" should also be available. 
+  - if the outputTemplate value is "md1":
+    - the templating function should accept a parseBlock as input
+    - the return value should include a yaml formatted front matter section that includes each attribute and value defined in the opening delimeter tag for the parseBlock, followed by any Extraction Marked Lines in the parseBlock and should not include the opening delimeter line or the closing delimeter line.
+- Expresso can extract each parsedBlock into a single document per parseBlock or can can concatenate multiple parsedBlocks into a single output file depending on which attributes are provided in a parseBlocks opening delimeter tag. 
+- appendTo feature description:
+  - If there is more than one parseBlock in an input document:
+    - any parseBlock in an input file may have an appendTo attribute set in the opening delimeter tag for that parseBlock.
+    - the value of the appendTo attribute must be set to the blockName of a different parseBlock in the inputDocument.
+Runtime Behavior: 
+- When Expresso is executed, it requires an input file, and does not accept any additional flags or parameters as inputs. 
+  - The input file is evaluated, a library of parseBlock metadata objects is created in memory.
+  - Each parseBlock is evaluated and an object is created for each in the parseBlock object library to store metadata for that parseBlock.
+    - each parseBlock object should store each attribute and value that is in the opening delimiter tag for that parseBlock. 
+    - the object created in the parseBlock object library to story metadata for each parseBlock may be called a parseBlock Memory Object or PMO.
+  - Evaluate all parseBlocks to ensure they have all required inputs.
+    - if any required inputs are missing, generate any attributes if that's attributes feature description indicates that it should have a generated value.  
+    - Evaluate all parseBlocks to create appendToChain objects.
+      - An appendToChain identifies the relationships between distinct parseBlocks in an input document.
+      - appendToChains consist of an ordered list of blockName values that are specified in the appendTo attributes of opening delimiter tags.
+      - each appendToChain includes the blockNames of related parseBlocks that will be concatenated together and share a common outputFileName.
+      - all appendToChains must have a topLevel and a bottomLevel member value.
+      - To create an appendToChain object:
+        - evaluate all parseBlock attributes:
+        -  If a parseBlock's blockName is not included in any appendTo attribute for any parseBlock, add the "unchained" property to the PMO for that parseBlock.
+          - if any PMO that is assigned the unchained attribute also has an appendTo attribute value that is not null, exit and return an error message. parseBlocks with the unchained property cannot contain an appendTo attribute. 
+          - if any PMO that is assigned the unchained attribute does not have an outputFileName, assign the outputFileName to the same value as it's blockName.
+        - Identify any parseBlock's that include an assignedTo attribute and whose blockName values are not listed in the assignedTo attribute of any other parseBlocks. 
+          - Add the "chainBottom" property to the PMO for each of these objects.
+          - Create a distinct appendToChain object for each PMO with the chainBottom property. 
+          - Each appendToChain should have the blockName of a parseBlock with the chainBottom attribute as the last item in the appendToChain list.
+        - Create a loop that will build each distinct appendToChain.
+          - create a variable inside this loop called currentTop as the counter. 
+          - To initialize the loop, set the currentTop value as the blockName of the chainBottom for that appendToChain.
+          - during each execution of the loop, the value of the assignedTo attribute of the currentTop should be added to the appendToChain and then set as the currentTop value for the next iteration of the loop. 
+          - This should continue until the currentTop does not have any appendTo value. Once the loop identifies a currentTop that does not have an appendTo attribute value, the PMO for that parseBlock should be assigned the property "chainTop".
+          - this process should be repeated for each distinct appendToChain. 
+    - for each PMO with the unchained object:
+      - use the outputTemplate defined in its attributes and create an outputFile that includes its extracted parseBlock lines, formatted according to the outputTemplate rules, and save as the outPutFileName. 
+    - for each appendToChain:
+      - The chainTop object in each appendToChain should have an outputFileName attribute. This outputFileName will be the same outputFileName used for every member of the associated appendToChain.
+      - for the chainTop object, create an output file saved as at the path and filename specified in its outputFileName attribute that includes the contents of the associated parseBlock formatted according to the rules of the outputTemplate specified for that parseBlock, and remove its blockName from the appendToChain list.
+      - For the blockName that is at the top of this appendToChain list, append the contents of its associated parseBlock to the outputFileName associated with this appendToChain formatted according to the rules of the outputTemplate specified for that parseBlock, and remove its blockName from the appendToChain list. 
+      - repeat his until there are no items left in an appendToChain. 
+    - after all unchained parseBlocks and all appendToChains have been processed:
+      - if a tfoutFileName value was provided when expresso was called
+        - the input file contents should be passed as an input value to the tfout function
+        - the tfout function should accept the input file as an input, classify all lines into line types, and return only standard lines
+        - the return value from the tfout function should be saved as the filename and location speficied in the tfoutFileName value. 
+File Structure: 
+- Expresso should have a typical file structure for a modern python 3 application.
+Version of Python: 
+- The recommended version of Python to use for Expresso is Python 3.x.
